@@ -1,0 +1,14 @@
+[Unit]
+Description=Squirrel Defense - AI bird feeder guardian
+After=network.target
+
+[Service]
+Type=simple
+User=ttboss
+WorkingDirectory=/home/ttboss/animal-detector
+ExecStart=/home/ttboss/animal-detector/venv/bin/python squirrel_defense.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
