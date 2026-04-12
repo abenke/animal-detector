@@ -61,10 +61,13 @@ python3 detect_animals.py --threshold 0.3 photo.jpg
 
 Annotated output images are saved to the `output/` folder.
 
-## Test images
+## Testing
 
-The `animal*.png` files in this repo can be used to verify the detector is working:
+Test images live in `tests/images/`. To run the test suite:
 
 ```bash
-python3 detect_animals.py animal1.png animal2.png animal3.png
+pip install pytest
+pytest tests/ -v
 ```
+
+Tests verify that the BSR model correctly identifies birds, squirrels, and non-animal images with expected confidence levels. CI runs automatically on push and PR via GitHub Actions.
