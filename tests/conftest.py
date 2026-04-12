@@ -29,12 +29,17 @@ def bsr_model():
     return interpreter, input_details, output_details, model_size, labels
 
 
-def run_detection(bsr_model, image_name):
-    """Helper: run detection on a test image and return detections."""
+@pytest.fixture(scope="session")
+def detect(bsr_model):
+    """Return a callable that runs detection on a test image by name."""
     interpreter, input_details, output_details, model_size, labels = bsr_model
-    image_path = os.path.join(IMAGES_DIR, image_name)
-    detections, _ = detect_in_image(
-        image_path, interpreter, input_details, output_details,
-        model_size, labels, is_bsr=True,
-    )
-    return detections
+
+    def _detect(image_name):
+        image_path = os.path.join(IMAGES_DIR, image_name)
+        detections, _ = detect_in_image(
+            image_path, interpreter, input_details, output_details,
+            model_size, labels, is_bsr=True,
+        )
+        return detections
+
+    return _detect
