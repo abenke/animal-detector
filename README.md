@@ -69,6 +69,49 @@ python3 detect_animals.py --threshold 0.3 photo.jpg
 
 Annotated output images are saved to the `output/` folder.
 
+## Running on the Raspberry Pi
+
+### Squirrel Defense (main loop)
+
+The main loop watches the camera, detects animals, and activates the deterrent when a squirrel is spotted:
+
+```bash
+python squirrel_defense.py              # armed mode
+python squirrel_defense.py --disarmed   # watch-only (no shooing)
+python squirrel_defense.py --threshold 0.6 --cooldown 10  # custom settings
+```
+
+### Run as a service (survives SSH disconnect, starts on boot)
+
+```bash
+sudo cp squirrel-defense.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable squirrel-defense   # start on boot
+sudo systemctl start squirrel-defense    # start now
+```
+
+Manage the service:
+
+```bash
+sudo systemctl stop squirrel-defense     # stop
+sudo systemctl start squirrel-defense    # start
+sudo systemctl restart squirrel-defense  # restart (e.g. after code changes)
+sudo systemctl status squirrel-defense   # check if running
+journalctl -u squirrel-defense -f        # tail live logs
+```
+
+Logs are also saved to `logs/defense_YYYYMMDD.log` (one file per day).
+
+### Camera calibration
+
+Capture a grid image to find the feeder coordinates, then set a crop region so the detector only looks at the feeder area:
+
+```bash
+python capture.py --calibrate            # save a grid image
+python capture.py --set-crop LEFT TOP RIGHT BOTTOM
+python capture.py                        # future captures auto-crop
+```
+
 ## Testing
 
 Test images live in `tests/images/`. To run the test suite:
