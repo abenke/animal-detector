@@ -12,5 +12,8 @@ __pycache__/
 output/
 captures/
 
+# Camera config (per-device calibration)
+camera_config.json
+
 # OS
 .DS_Store
