@@ -1,0 +1,15 @@
+# Models (too large for git - see README for setup)
+model_bsr/
+model_coco/
+bsr_model.zip
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Output
+output/
+
+# OS
+.DS_Store
