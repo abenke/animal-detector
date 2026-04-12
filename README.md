@@ -39,7 +39,15 @@ model_bsr/
     ...
 ```
 
-### 3. (Optional) COCO model
+### 3. (Raspberry Pi only) Pi Camera
+
+To use `capture.py` for taking photos with a Pi Camera Module:
+
+```bash
+pip install picamera2
+```
+
+### 4. (Optional) COCO model
 
 The general-purpose COCO model downloads automatically on first use. It detects 80 object types but does not include squirrels.
 
