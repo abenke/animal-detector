@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy Pillow tflite-runtime pytest
+          pip install numpy Pillow ai-edge-litert pytest
 
       - name: Download BSR model
         run: |
