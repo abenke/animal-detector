@@ -24,16 +24,24 @@ except ImportError:
     sys.exit(1)
 
 try:
-    import tflite_runtime.interpreter as tflite
-    USING_TFLITE_RUNTIME = True
+    from ai_edge_litert.interpreter import Interpreter as tflite_Interpreter
+    TFLITE_BACKEND = "litert"
 except ImportError:
     try:
-        import tensorflow as tf
-        USING_TFLITE_RUNTIME = False
+        import tflite_runtime.interpreter as tflite
+        tflite_Interpreter = tflite.Interpreter
+        TFLITE_BACKEND = "tflite_runtime"
     except ImportError:
-        print("\n🔧 Need TensorFlow! Run:\n")
-        print("   pip3 install tensorflow\n")
-        sys.exit(1)
+        try:
+            import tensorflow as tf
+            tflite_Interpreter = tf.lite.Interpreter
+            TFLITE_BACKEND = "tensorflow"
+        except ImportError:
+            print("\n🔧 Need a TFLite backend! Run one of:\n")
+            print("   pip install ai-edge-litert        (recommended)")
+            print("   pip install tflite-runtime")
+            print("   pip install tensorflow\n")
+            sys.exit(1)
 
 
 # ============================================================
@@ -143,10 +151,7 @@ COCO_ANIMAL_IDS = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 def load_model(model_path):
     """Load a TFLite model."""
     print(f"🧠 Loading AI model...")
-    if USING_TFLITE_RUNTIME:
-        interpreter = tflite.Interpreter(model_path=model_path)
-    else:
-        interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter = tflite_Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()

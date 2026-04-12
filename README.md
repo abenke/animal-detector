@@ -9,7 +9,15 @@ By Troy (age 9) and Dad. Detects birds, squirrels, and raccoons in photos using 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install numpy Pillow tensorflow
+pip install numpy Pillow
+```
+
+Then install a TFLite backend (pick one):
+
+```bash
+pip install ai-edge-litert       # recommended, works on Pi + Python 3.13
+pip install tflite-runtime        # alternative (no Python 3.13 wheels yet)
+pip install tensorflow            # full TF, heavy (no Python 3.13 support yet)
 ```
 
 ### 2. Download the BirdSquirrelRaccoon (BSR) model
