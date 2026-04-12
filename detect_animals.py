@@ -49,9 +49,9 @@ except ImportError:
 # ============================================================
 
 ANIMAL_ACTIONS = {
-    "squirrel": "🐿️ SERVO ACTIVATE - shoo the squirrel!",
+    "squirrel": "🐿️ SHOO - activate deterrent!",
     "bird":     "🐦 Log photo - welcome visitor!",
-    "raccoon":  "🦝 SERVO ACTIVATE + send alert!",
+    "raccoon":  "🦝 SHOO + send alert!",
     "cat":      "😺 No action - friendly neighbor cat",
     "dog":      "🐕 No action - good boy!",
     "bear":     "🐻 ALERT ALERT ALERT!",
@@ -265,7 +265,7 @@ def detect_in_image(image_path, interpreter, input_details, output_details,
 
 
 def get_action(label):
-    """Decide what the servo should do."""
+    """Decide what action to take for a detected animal."""
     return ANIMAL_ACTIONS.get(label.lower(), DEFAULT_ACTION)
 
 

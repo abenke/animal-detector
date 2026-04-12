@@ -106,14 +106,14 @@ class TestNegative:
 # --- Action mapping ---
 
 class TestActions:
-    def test_squirrel_triggers_servo(self, detect):
-        """Squirrel detection should map to servo activation."""
+    def test_squirrel_triggers_shoo(self, detect):
+        """Squirrel detection should map to deterrent activation."""
         from detect_animals import get_action
         detections = detect("animal2.png")
         squirrels = [d for d in detections if d["label"] == "squirrel"]
         assert len(squirrels) >= 1
         action = get_action(squirrels[0]["label"])
-        assert "SERVO" in action
+        assert "SHOO" in action
 
     def test_bird_logged(self, detect):
         """Bird detection should map to photo logging."""
