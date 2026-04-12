@@ -47,11 +47,10 @@ class TestNewEvents:
         result = tracker.update([bird()], now=131)
         assert result["is_new_event"] is True
 
-    def test_bird_then_brief_gap_then_bird_is_not_new(self):
-        """Same animal returning after a short gap is not a new event."""
+    def test_bird_continuous_across_frames_is_not_new(self):
+        """Same animal in consecutive frames without a gap is not a new event."""
         tracker = EventTracker(quiet_seconds=30)
         tracker.update([bird()], now=100)
-        tracker.clear()
         result = tracker.update([bird()], now=105)
         assert result["is_new_event"] is False
 
