@@ -23,8 +23,10 @@ OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "captures"
 def capture_at_position(camera, lens_position, output_dir):
     """Capture one image at a specific lens position."""
     camera.set_controls({"AfMode": controls.AfModeEnum.Manual, "LensPosition": lens_position})
-    # Give the lens time to move and exposure to settle
-    time.sleep(1.5)
+    # Flush frames so the lens physically moves and new settings take effect
+    for _ in range(10):
+        camera.capture_array()
+    time.sleep(1)
 
     if lens_position > 0:
         distance_m = 1.0 / lens_position
