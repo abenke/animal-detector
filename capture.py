@@ -37,10 +37,23 @@ def save_config(config):
 
 def capture_raw():
     """Capture a full-resolution image and return it as a PIL Image."""
+    from libcamera import controls as libcam_controls
     camera = Picamera2()
     config = camera.create_still_configuration()
     camera.configure(config)
     camera.start()
+
+    # Apply saved focus setting
+    cam_config = load_config()
+    lens_position = cam_config.get("lens_position", None)
+    if lens_position is not None and lens_position >= 0:
+        camera.set_controls({
+            "AfMode": libcam_controls.AfModeEnum.Manual,
+            "LensPosition": lens_position,
+        })
+    elif lens_position is not None and lens_position < 0:
+        camera.set_controls({"AfMode": libcam_controls.AfModeEnum.Auto})
+
     time.sleep(2)
     img = camera.capture_image("main")
     camera.stop()

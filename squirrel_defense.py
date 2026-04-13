@@ -95,27 +95,47 @@ def setup_logging():
 #  📷  Camera
 # ============================================================
 
-def load_crop_config():
-    """Load crop region from camera_config.json if it exists."""
+def load_camera_config():
+    """Load camera settings from camera_config.json."""
+    config = {}
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH) as f:
             config = json.load(f)
-        if "crop" in config:
-            box = config["crop"]
-            return (box["left"], box["top"], box["right"], box["bottom"])
-    return None
+
+    crop_box = None
+    if "crop" in config:
+        box = config["crop"]
+        crop_box = (box["left"], box["top"], box["right"], box["bottom"])
+
+    lens_position = config.get("lens_position", None)
+    return crop_box, lens_position
 
 
-def start_camera():
+def start_camera(lens_position=None):
     """Start the Pi Camera and return the Picamera2 instance."""
     if Picamera2 is None:
         print("❌ picamera2 not installed! Run: pip install picamera2")
         sys.exit(1)
+    from libcamera import controls as libcam_controls
     camera = Picamera2()
     config = camera.create_still_configuration()
     camera.configure(config)
     camera.start()
-    # Let auto-exposure settle on startup
+
+    if lens_position is not None and lens_position >= 0:
+        camera.set_controls({
+            "AfMode": libcam_controls.AfModeEnum.Manual,
+            "LensPosition": lens_position,
+        })
+        dist = f"{1.0 / lens_position:.1f}m" if lens_position > 0 else "infinity"
+        print(f"🔍 Focus: manual (lens position {lens_position:.2f}, ~{dist})")
+    elif lens_position is not None and lens_position < 0:
+        camera.set_controls({"AfMode": libcam_controls.AfModeEnum.Auto})
+        print("🔍 Focus: autofocus")
+    else:
+        print("🔍 Focus: camera default")
+
+    # Let auto-exposure and focus settle
     time.sleep(2)
     print("📷 Camera ready!")
     return camera
@@ -351,10 +371,10 @@ def main():
     interpreter, input_details, output_details, model_size = load_model(model_path)
 
     # Set up camera
-    crop_box = load_crop_config()
+    crop_box, lens_position = load_camera_config()
     if crop_box:
         print(f"✂️  Crop region: {crop_box}")
-    camera = start_camera()
+    camera = start_camera(lens_position)
 
     # Set up relay
     relay = Relay(RELAY_GPIO_PIN, RELAY_PULSE_SECONDS, enabled=not args.disarmed)
