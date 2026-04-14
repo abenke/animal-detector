@@ -60,7 +60,7 @@ ANIMAL_ACTIONS = {
 DEFAULT_ACTION = "📸 Unknown animal - log photo"
 
 # How confident does the AI need to be? (0.0 to 1.0)
-CONFIDENCE_THRESHOLD = 0.4
+CONFIDENCE_THRESHOLD = 0.8
 
 
 # ============================================================
@@ -111,19 +111,23 @@ def download_coco_model():
 
 
 def load_bsr_labelmap(model_dir):
-    """Load labels from the BSR model's labelmap.txt."""
+    """Load labels from the BSR model's labelmap.txt.
+
+    Each line in labelmap.txt corresponds to a class ID. Empty lines
+    and '???' entries are placeholders (often class 0) — skip them as
+    labels but still advance the index so later labels line up with
+    their true class IDs.
+    """
     labelmap_path = os.path.join(model_dir, "labelmap.txt")
     if not os.path.exists(labelmap_path):
         return {0: "bird", 1: "squirrel", 2: "raccoon"}
     labels = {}
-    idx = 0
     with open(labelmap_path, 'r') as f:
-        for line in f:
+        for idx, line in enumerate(f):
             line = line.strip()
             if not line or line == '???':
                 continue
             labels[idx] = line.lower()
-            idx += 1
     return labels
 
 
