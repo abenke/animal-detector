@@ -244,7 +244,14 @@ def detect_from_image(img, interpreter, input_details, output_details,
             continue
         class_id = int(classes[i])
         label = labels.get(class_id, f"class_{class_id}")
-        detections.append({"label": label, "score": score})
+        ymin, xmin, ymax, xmax = boxes[i]
+        box = {
+            "xmin": float(xmin) * original_size[0],
+            "ymin": float(ymin) * original_size[1],
+            "xmax": float(xmax) * original_size[0],
+            "ymax": float(ymax) * original_size[1],
+        }
+        detections.append({"label": label, "score": score, "box": box})
 
     return detections
 
@@ -325,13 +332,38 @@ class EventTracker:
 #  💾  Save detection snapshots
 # ============================================================
 
+BOX_COLORS = {
+    "squirrel": (255, 80, 0),
+    "bird":     (0, 200, 0),
+    "raccoon":  (180, 0, 180),
+}
+
+
 def save_snapshot(img, detections, timestamp, log):
-    """Save a detection snapshot with labels in the filename."""
+    """Save a detection snapshot with bounding boxes drawn."""
+    from PIL import ImageDraw
     os.makedirs(DETECTIONS_DIR, exist_ok=True)
+
+    # Draw boxes on a copy so we don't modify the original
+    annotated = img.copy()
+    draw = ImageDraw.Draw(annotated)
+    for det in detections:
+        if "box" not in det:
+            continue
+        b = det["box"]
+        color = BOX_COLORS.get(det["label"], (200, 200, 200))
+        draw.rectangle([b["xmin"], b["ymin"], b["xmax"], b["ymax"]],
+                       outline=color, width=3)
+        text = f"{det['label']} {det['score']:.0%}"
+        text_y = max(b["ymin"] - 18, 0)
+        tbox = draw.textbbox((b["xmin"] + 4, text_y), text)
+        draw.rectangle([tbox[0] - 2, tbox[1] - 2, tbox[2] + 2, tbox[3] + 2], fill=color)
+        draw.text((b["xmin"] + 4, text_y), text, fill=(255, 255, 255))
+
     det_labels = "_".join(sorted(set(d["label"] for d in detections)))
     filename = f"{timestamp}_{det_labels}.jpg"
     path = os.path.join(DETECTIONS_DIR, filename)
-    img.save(path)
+    annotated.save(path)
     log.info("Snapshot saved: detections/%s", filename)
 
 
