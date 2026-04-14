@@ -47,6 +47,7 @@ def format_size(size):
 def render_index():
     html = """<!DOCTYPE html>
 <html><head><title>Squirrel Defense</title>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #1a1a2e; color: #eee; }
@@ -96,9 +97,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _handle_request(self):
         if self.path == "/" or self.path == "":
-            content = render_index().encode()
+            content = render_index().encode("utf-8")
             self.send_response(200)
-            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", len(content))
             self.end_headers()
             self.wfile.write(content)
