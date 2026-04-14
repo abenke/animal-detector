@@ -11,6 +11,7 @@ Then open http://squirrel-defense.local:8080 in your browser.
 import argparse
 import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -77,8 +78,23 @@ a { color: #64b5f6; }
     return html
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
+        try:
+            self._handle_request()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:
+            try:
+                self.send_error(500, str(e))
+            except Exception:
+                pass
+
+    def _handle_request(self):
         if self.path == "/" or self.path == "":
             content = render_index().encode()
             self.send_response(200)
@@ -120,7 +136,7 @@ def main():
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
 
-    server = HTTPServer(("0.0.0.0", args.port), Handler)
+    server = ThreadedHTTPServer(("0.0.0.0", args.port), Handler)
     print(f"🌐 Web viewer running at http://squirrel-defense.local:{args.port}")
     print(f"   Press Ctrl+C to stop.\n")
     server.serve_forever()
