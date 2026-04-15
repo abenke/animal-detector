@@ -32,14 +32,18 @@ SERVICE = "squirrel-defense"
 
 
 def list_files(folder_path):
-    """List files in a folder, newest first."""
+    """List files in a folder (recursive), newest first.
+
+    Returns tuples of (relative_path, mtime, size).
+    """
     if not os.path.isdir(folder_path):
         return []
     files = []
-    for f in os.listdir(folder_path):
-        full = os.path.join(folder_path, f)
-        if os.path.isfile(full):
-            files.append((f, os.path.getmtime(full), os.path.getsize(full)))
+    for root, _, filenames in os.walk(folder_path):
+        for f in filenames:
+            full = os.path.join(root, f)
+            rel = os.path.relpath(full, folder_path)
+            files.append((rel, os.path.getmtime(full), os.path.getsize(full)))
     files.sort(key=lambda x: x[1], reverse=True)
     return files
 
@@ -78,6 +82,16 @@ def get_current_focus():
         with open(path) as f:
             cfg = json.load(f)
         return cfg.get("lens_position")
+    return None
+
+
+def get_current_crop():
+    """Read crop region from camera_config.json."""
+    path = os.path.join(BASE_DIR, "camera_config.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            cfg = json.load(f)
+        return cfg.get("crop")
     return None
 
 
@@ -164,6 +178,14 @@ def render_controls(message=None, output=None):
         else "not set"
     )
 
+    crop = get_current_crop()
+    if crop:
+        crop_display = f"left={crop['left']}, top={crop['top']}, right={crop['right']}, bottom={crop['bottom']} ({crop['right']-crop['left']}x{crop['bottom']-crop['top']})"
+        crop_left, crop_top, crop_right, crop_bottom = crop["left"], crop["top"], crop["right"], crop["bottom"]
+    else:
+        crop_display = "not set"
+        crop_left = crop_top = crop_right = crop_bottom = ""
+
     msg_html = f'<div class="card"><strong>{message}</strong></div>' if message else ""
     out_html = f'<div class="card"><h2>Output</h2><pre>{output}</pre></div>' if output else ""
 
@@ -211,6 +233,24 @@ def render_controls(message=None, output=None):
     <input type="hidden" name="action" value="calibrate_crop">
     <button type="submit">✂️ Calibrate crop (grid)</button>
   </form>
+</div>
+
+<div class="card">
+  <h2>Crop Region</h2>
+  <p>Current: <strong>{crop_display}</strong></p>
+  <form method="post" action="/action" class="row">
+    <input type="hidden" name="action" value="set_crop">
+    <label>Left:</label> <input type="number" name="left" value="{crop_left}" required>
+    <label>Top:</label> <input type="number" name="top" value="{crop_top}" required>
+    <label>Right:</label> <input type="number" name="right" value="{crop_right}" required>
+    <label>Bottom:</label> <input type="number" name="bottom" value="{crop_bottom}" required>
+    <button type="submit">Save</button>
+  </form>
+  <form method="post" action="/action" style="display:inline">
+    <input type="hidden" name="action" value="clear_crop">
+    <button class="danger" type="submit">Clear crop</button>
+  </form>
+  <p class="count">Tip: Run "Calibrate crop (grid)" first, open captures/calibration.jpg, then fill in pixel coordinates.</p>
 </div>
 
 <div class="card">
@@ -265,6 +305,23 @@ def handle_action(form):
             return "Missing value", ""
         code, out, err = run_command([PYTHON, "calibrate_focus.py", "--set-focus", value])
         return f"Focus {'set' if code == 0 else 'failed'}", (out + err).strip()
+
+    if action == "set_crop":
+        try:
+            left = form.get("left", [""])[0]
+            top = form.get("top", [""])[0]
+            right = form.get("right", [""])[0]
+            bottom = form.get("bottom", [""])[0]
+            code, out, err = run_command(
+                [PYTHON, "capture.py", "--set-crop", left, top, right, bottom]
+            )
+            return f"Crop {'set' if code == 0 else 'failed'}", (out + err).strip()
+        except Exception as e:
+            return "Error setting crop", str(e)
+
+    if action == "clear_crop":
+        code, out, err = run_command([PYTHON, "capture.py", "--clear-crop"])
+        return f"Crop {'cleared' if code == 0 else 'failed'}", (out + err).strip()
 
     if action in ("service_start", "service_stop", "service_restart"):
         cmd = action.replace("service_", "")
