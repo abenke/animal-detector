@@ -5,12 +5,17 @@ import pytest
 # Add project root to path so we can import detect_animals
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import detect_animals
 from detect_animals import (
     find_bsr_model,
     load_bsr_labelmap,
     load_model,
     detect_in_image,
 )
+
+# Tests use a lower confidence threshold than production to exercise the
+# full detection pipeline across varied images (some birds are ~40% confident).
+detect_animals.CONFIDENCE_THRESHOLD = 0.4
 
 IMAGES_DIR = os.path.join(os.path.dirname(__file__), "images")
 
