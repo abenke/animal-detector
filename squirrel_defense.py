@@ -43,7 +43,7 @@ from detect_animals import (
 # ============================================================
 
 # How confident does the AI need to be to shoo? (0.0 to 1.0)
-SHOO_THRESHOLD = 0.5
+SHOO_THRESHOLD = 0.7
 
 # Seconds to wait between shoos (so we don't overdo it)
 COOLDOWN_SECONDS = 8
