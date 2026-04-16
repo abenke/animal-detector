@@ -102,6 +102,17 @@ journalctl -u squirrel-defense -f        # tail live logs
 
 Logs are also saved to `logs/defense_YYYYMMDD.log` (one file per day).
 
+### Web viewer (as a service)
+
+```bash
+sudo cp web-viewer.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable web-viewer
+sudo systemctl start web-viewer
+```
+
+Then open `http://squirrel-defense.local:8080` from any device on the local network.
+
 ### Camera calibration
 
 Capture a grid image to find the feeder coordinates, then set a crop region so the detector only looks at the feeder area:

@@ -1,0 +1,14 @@
+[Unit]
+Description=Squirrel Defense Web Viewer
+After=network.target
+
+[Service]
+Type=simple
+User=ttboss
+WorkingDirectory=/home/ttboss/animal-detector
+ExecStart=/home/ttboss/animal-detector/venv/bin/python web_viewer.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
