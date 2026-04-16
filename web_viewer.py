@@ -220,6 +220,21 @@ def render_controls(message=None, output=None):
 </div>
 
 <div class="card">
+  <h2>Deterrent (Manual Test)</h2>
+  <form method="post" action="/action" style="display:inline">
+    <input type="hidden" name="action" value="shoo">
+    <button class="danger" type="submit">💨 SHOO!</button>
+  </form>
+  <form method="post" action="/action" class="row">
+    <input type="hidden" name="action" value="shoo">
+    <label>Custom duration (seconds):</label>
+    <input type="number" step="0.1" name="duration" placeholder="0.3">
+    <button class="danger" type="submit">💨 SHOO with duration</button>
+  </form>
+  <p class="count">Pulses GPIO 18 to fire the relay. Service must be stopped (it owns the GPIO pin while running).</p>
+</div>
+
+<div class="card">
   <h2>Camera</h2>
   <form method="post" action="/action" style="display:inline">
     <input type="hidden" name="action" value="snapshot">
@@ -322,6 +337,14 @@ def handle_action(form):
     if action == "clear_crop":
         code, out, err = run_command([PYTHON, "capture.py", "--clear-crop"])
         return f"Crop {'cleared' if code == 0 else 'failed'}", (out + err).strip()
+
+    if action == "shoo":
+        cmd = [PYTHON, "shoo.py"]
+        duration = form.get("duration", [""])[0]
+        if duration:
+            cmd += ["--duration", duration]
+        code, out, err = run_command(cmd, timeout=10)
+        return f"Shoo {'fired' if code == 0 else 'failed'}", (out + err).strip()
 
     if action in ("service_start", "service_stop", "service_restart"):
         cmd = action.replace("service_", "")
