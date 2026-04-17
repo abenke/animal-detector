@@ -261,7 +261,7 @@ def detect_from_image(img, interpreter, input_details, output_details,
 
 # How confident does COCO need to be to confirm an animal? Lower than
 # SHOO_THRESHOLD since COCO just needs to agree "something alive is there".
-COCO_CONFIRM_THRESHOLD = 0.4
+COCO_CONFIRM_THRESHOLD = 0.3
 
 
 def verify_with_coco(img, coco_interpreter, coco_input_details,
