@@ -34,7 +34,10 @@ from detect_animals import (
     find_bsr_model,
     load_bsr_labelmap,
     load_model,
+    download_coco_model,
     detect_in_image,
+    COCO_LABELS,
+    COCO_ANIMAL_IDS,
     CONFIDENCE_THRESHOLD,
 )
 
@@ -256,6 +259,34 @@ def detect_from_image(img, interpreter, input_details, output_details,
     return detections
 
 
+# How confident does COCO need to be to confirm an animal? Lower than
+# SHOO_THRESHOLD since COCO just needs to agree "something alive is there".
+COCO_CONFIRM_THRESHOLD = 0.3
+
+
+def verify_with_coco(img, coco_interpreter, coco_input_details,
+                     coco_output_details, coco_model_size):
+    """Run COCO model on the image and return True if any animal is detected."""
+    width, height = coco_model_size
+    img_resized = img.resize((width, height))
+
+    input_data = np.expand_dims(np.array(img_resized, dtype=np.uint8), axis=0)
+    coco_interpreter.set_tensor(coco_input_details[0]['index'], input_data)
+    coco_interpreter.invoke()
+
+    classes = coco_interpreter.get_tensor(coco_output_details[1]['index'])[0]
+    scores = coco_interpreter.get_tensor(coco_output_details[2]['index'])[0]
+    count = int(coco_interpreter.get_tensor(coco_output_details[3]['index'])[0])
+
+    for i in range(min(count, len(scores))):
+        if float(scores[i]) < COCO_CONFIRM_THRESHOLD:
+            continue
+        class_id = int(classes[i])
+        if class_id in COCO_ANIMAL_IDS:
+            return True
+    return False
+
+
 # ============================================================
 #  📊  Event tracker — deduplicates detections
 # ============================================================
@@ -394,13 +425,17 @@ def main():
     print("╚══════════════════════════════════════════════╝")
     print()
 
-    # Load model
+    # Load BSR model (primary detector)
     model_path = find_bsr_model()
     if model_path is None:
         print("❌ BSR model not found! See README for download instructions.")
         sys.exit(1)
     labels = load_bsr_labelmap(os.path.dirname(model_path))
     interpreter, input_details, output_details, model_size = load_model(model_path)
+
+    # Load COCO model (verification pass to filter false positives)
+    coco_path = download_coco_model()
+    coco_interp, coco_ind, coco_outd, coco_size = load_model(coco_path)
 
     # Set up camera
     crop_box, lens_position = load_camera_config()
@@ -445,6 +480,12 @@ def main():
             # Print a dot every 10 frames so we know it's alive
             if frame_count % 10 == 0:
                 print(".", end="", flush=True)
+            time.sleep(FRAME_INTERVAL)
+            continue
+
+        # COCO verification — confirm an actual animal is present
+        if not verify_with_coco(img, coco_interp, coco_ind, coco_outd, coco_size):
+            tracker.clear()
             time.sleep(FRAME_INTERVAL)
             continue
 
