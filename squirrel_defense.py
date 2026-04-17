@@ -485,6 +485,8 @@ def main():
 
         # COCO verification — confirm an actual animal is present
         if not verify_with_coco(img, coco_interp, coco_ind, coco_outd, coco_size):
+            summary = ", ".join(f"{d['label']} {d['score']:.0%}" for d in detections)
+            log.info("COCO rejected BSR detection: %s", summary)
             tracker.clear()
             time.sleep(FRAME_INTERVAL)
             continue
