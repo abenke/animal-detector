@@ -16,7 +16,7 @@ import subprocess
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PYTHON = sys.executable  # same interpreter that started this script (picks up venv)
@@ -124,6 +124,10 @@ input[type=number], input[type=text] { background: #0a1020; color: #eee; border:
 pre { background: #0a1020; padding: 12px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; max-height: 300px; overflow-y: auto; }
 .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
 label { color: #aaa; }
+.pager { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+.pager a, .pager span.disabled { padding: 4px 10px; background: #0f3460; border-radius: 4px; text-decoration: none; color: #eee; }
+.pager span.disabled { background: #222; color: #666; }
+.pager .info { color: #888; font-size: 0.9em; margin-left: auto; }
 """
 
 NAV = """
@@ -141,7 +145,29 @@ def render_nav(page):
     )
 
 
-def render_index():
+PAGE_SIZE = 50
+
+
+def _page_param(query, name):
+    try:
+        return max(1, int(query.get(name, ["1"])[0]))
+    except (ValueError, TypeError):
+        return 1
+
+
+def _pager_link(query, folder_name, page):
+    """Build a URL that preserves other folders' page params."""
+    parts = []
+    for k, vs in query.items():
+        if k == folder_name:
+            continue
+        for v in vs:
+            parts.append(f"{k}={v}")
+    parts.append(f"{folder_name}={page}")
+    return "/?" + "&".join(parts)
+
+
+def render_index(query):
     html = f"""<!DOCTYPE html>
 <html><head><title>Squirrel Defense</title>
 <meta charset="utf-8">
@@ -152,14 +178,36 @@ def render_index():
 """
     for name, path in FOLDERS.items():
         files = list_files(path)
-        html += f'<div class="card"><h2>{name}/ <span class="count">({len(files)} files)</span></h2>'
+        total = len(files)
+        pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+        page = min(_page_param(query, name), pages)
+        start = (page - 1) * PAGE_SIZE
+        end = start + PAGE_SIZE
+
+        html += f'<div class="card"><h2>{name}/ <span class="count">({total} files)</span></h2>'
         if files:
             html += '<ul class="file-list">'
-            for fname, mtime, size in files[:50]:
+            for fname, mtime, size in files[start:end]:
                 html += f'<li><a href="/files/{name}/{fname}">{fname}</a> — {format_size(size)}</li>'
-            if len(files) > 50:
-                html += f"<li>... and {len(files) - 50} more</li>"
             html += "</ul>"
+
+            if pages > 1:
+                prev_link = (
+                    f'<a href="{_pager_link(query, name, page - 1)}">← Prev</a>'
+                    if page > 1 else '<span class="disabled">← Prev</span>'
+                )
+                next_link = (
+                    f'<a href="{_pager_link(query, name, page + 1)}">Next →</a>'
+                    if page < pages else '<span class="disabled">Next →</span>'
+                )
+                shown_from = start + 1
+                shown_to = min(end, total)
+                html += (
+                    f'<div class="pager">{prev_link}'
+                    f'<span>Page {page} of {pages}</span>{next_link}'
+                    f'<span class="info">Showing {shown_from}–{shown_to} of {total}</span>'
+                    f'</div>'
+                )
         else:
             html += "<p>Empty</p>"
         html += "</div>"
@@ -404,11 +452,14 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(content)
 
     def _handle_get(self):
-        if self.path in ("/", ""):
-            self._send_html(render_index())
-        elif self.path == "/controls":
+        split = urlsplit(self.path)
+        path = split.path
+        if path in ("/", ""):
+            query = parse_qs(split.query)
+            self._send_html(render_index(query))
+        elif path == "/controls":
             self._send_html(render_controls())
-        elif self.path.startswith("/files/"):
+        elif path.startswith("/files/"):
             self._serve_file()
         else:
             self.send_error(404)
