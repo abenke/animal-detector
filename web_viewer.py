@@ -128,6 +128,10 @@ label { color: #aaa; }
 .pager a, .pager span.disabled { padding: 4px 10px; background: #0f3460; border-radius: 4px; text-decoration: none; color: #eee; }
 .pager span.disabled { background: #222; color: #666; }
 .pager .info { color: #888; font-size: 0.9em; margin-left: auto; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px; color: #888; font-size: 0.9em; }
+.pill { padding: 3px 10px; background: #0a1020; border: 1px solid #2a3a6e; border-radius: 999px; text-decoration: none; color: #cfd7e8; font-size: 0.9em; }
+.pill:hover { background: #16213e; }
+.pill.active { background: #0f3460; border-color: #64b5f6; color: #fff; }
 """
 
 NAV = """
@@ -155,16 +159,60 @@ def _page_param(query, name):
         return 1
 
 
-def _pager_link(query, folder_name, page):
-    """Build a URL that preserves other folders' page params."""
-    parts = []
-    for k, vs in query.items():
-        if k == folder_name:
-            continue
-        for v in vs:
-            parts.append(f"{k}={v}")
-    parts.append(f"{folder_name}={page}")
-    return "/?" + "&".join(parts)
+def _build_link(query, overrides):
+    """Build a URL preserving query, with given key→value overrides (None removes the key)."""
+    merged = {k: list(v) for k, v in query.items()}
+    for k, v in overrides.items():
+        if v is None:
+            merged.pop(k, None)
+        else:
+            merged[k] = [str(v)]
+    parts = [f"{k}={v}" for k, vs in merged.items() for v in vs]
+    return "/?" + "&".join(parts) if parts else "/"
+
+
+def _extract_labels(filename):
+    """Detection filenames are 'YYYYMMDD_HHMMSS_label[_label...].jpg'."""
+    stem = filename.rsplit(".", 1)[0]
+    parts = stem.split("_")
+    return parts[2:] if len(parts) >= 3 else []
+
+
+def _render_pager(query, name, page, pages, start, end, total):
+    if pages <= 1:
+        return ""
+    prev_link = (
+        f'<a href="{_build_link(query, {name: page - 1})}">← Prev</a>'
+        if page > 1 else '<span class="disabled">← Prev</span>'
+    )
+    next_link = (
+        f'<a href="{_build_link(query, {name: page + 1})}">Next →</a>'
+        if page < pages else '<span class="disabled">Next →</span>'
+    )
+    return (
+        f'<div class="pager">{prev_link}'
+        f'<span>Page {page} of {pages}</span>{next_link}'
+        f'<span class="info">Showing {start + 1}–{min(end, total)} of {total}</span>'
+        f'</div>'
+    )
+
+
+def _render_label_filter(query, name, files, active_label):
+    """Render label filter pills for folders whose files encode labels in their names."""
+    labels = sorted({lbl for fname, _, _ in files for lbl in _extract_labels(fname)})
+    if not labels:
+        return ""
+    filter_key = f"{name}_label"
+    # Reset page when changing filter
+    all_link = _build_link(query, {filter_key: None, name: None})
+    pills = [
+        f'<a class="pill {"active" if not active_label else ""}" href="{all_link}">All</a>'
+    ]
+    for lbl in labels:
+        link = _build_link(query, {filter_key: lbl, name: None})
+        cls = "pill active" if lbl == active_label else "pill"
+        pills.append(f'<a class="{cls}" href="{link}">{lbl}</a>')
+    return '<div class="filter-row">Filter: ' + " ".join(pills) + "</div>"
 
 
 def render_index(query):
@@ -178,36 +226,36 @@ def render_index(query):
 """
     for name, path in FOLDERS.items():
         files = list_files(path)
+        total_unfiltered = len(files)
+
+        active_label = query.get(f"{name}_label", [""])[0] or None
+        filter_html = _render_label_filter(query, name, files, active_label)
+        if active_label:
+            files = [f for f in files if active_label in _extract_labels(f[0])]
+
         total = len(files)
         pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
         page = min(_page_param(query, name), pages)
         start = (page - 1) * PAGE_SIZE
         end = start + PAGE_SIZE
 
-        html += f'<div class="card"><h2>{name}/ <span class="count">({total} files)</span></h2>'
+        count_text = (
+            f"{total} of {total_unfiltered} files"
+            if active_label else f"{total_unfiltered} files"
+        )
+        html += f'<div class="card"><h2>{name}/ <span class="count">({count_text})</span></h2>'
+        html += filter_html
+
         if files:
+            pager = _render_pager(query, name, page, pages, start, end, total)
+            html += pager
             html += '<ul class="file-list">'
             for fname, mtime, size in files[start:end]:
                 html += f'<li><a href="/files/{name}/{fname}">{fname}</a> — {format_size(size)}</li>'
             html += "</ul>"
-
-            if pages > 1:
-                prev_link = (
-                    f'<a href="{_pager_link(query, name, page - 1)}">← Prev</a>'
-                    if page > 1 else '<span class="disabled">← Prev</span>'
-                )
-                next_link = (
-                    f'<a href="{_pager_link(query, name, page + 1)}">Next →</a>'
-                    if page < pages else '<span class="disabled">Next →</span>'
-                )
-                shown_from = start + 1
-                shown_to = min(end, total)
-                html += (
-                    f'<div class="pager">{prev_link}'
-                    f'<span>Page {page} of {pages}</span>{next_link}'
-                    f'<span class="info">Showing {shown_from}–{shown_to} of {total}</span>'
-                    f'</div>'
-                )
+            html += pager
+        elif active_label:
+            html += f'<p>No files match <strong>{active_label}</strong>.</p>'
         else:
             html += "<p>Empty</p>"
         html += "</div>"
